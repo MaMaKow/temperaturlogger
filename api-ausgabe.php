@@ -1,24 +1,22 @@
 <?php
 require_once './default.php';
 
-/*
- * Dieses Script soll die Temperaturen aus der Datenbank ausgeben.
- */
-//ini_set('log_errors', TRUE);
-//ini_set('error_log', 'error.log');
-//error_log(var_export($_POST, TRUE));
-//error_log(var_export($_GET, TRUE));
+header('Content-Type: application/json');
 
-//$wert = filter_input(INPUT_POST, 'wert', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-$date_start_object = new DateTime();
-$date_start_object->sub(new DateInterval('PT360S'));
+// Parameter: limit (Anzahl der letzten Datensätze) oder hours (Stunden zurück)
+$hours = filter_input(INPUT_GET, 'hours', FILTER_SANITIZE_NUMBER_INT);
 
-$stmt = $pdo->prepare('SELECT * FROM `temperaturen` WHERE `zeit` >= :start_zeit;');
-//$result = $stmt->execute(array('start_zeit' => $date_start_object->getTimestamp()));
-$result = $stmt->execute(array('start_zeit' => $date_start_object->format('c')));
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
-    $data[] = $row;
+if ($hours) {
+    $sql = 'SELECT * FROM `temperaturen` WHERE `zeit` >= NOW() - INTERVAL :hours HOUR ORDER BY `zeit` ASC';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['hours' => (int)$hours]);
+} else {
+    // Default: letzte 24 Stunden
+    $sql = 'SELECT * FROM `temperaturen` WHERE `zeit` >= NOW() - INTERVAL 24 HOUR ORDER BY `zeit` ASC';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
 }
 
-
+$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 echo json_encode($data);
+?>
