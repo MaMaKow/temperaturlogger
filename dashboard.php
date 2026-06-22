@@ -32,13 +32,8 @@
             <option value="">-- Bitte Sensor wählen --</option>
         </select>
         <label>Zeitraum:</label>
-        <select id="hoursSelect">
-            <option value="6">Letzte 6 Stunden</option>
-            <option value="12">Letzte 12 Stunden</option>
-            <option value="24" selected>Letzte 24 Stunden</option>
-            <option value="48">Letzte 48 Stunden</option>
-            <option value="168">Letzte 7 Tage</option>
-        </select>
+        <input type="date" name="dateFrom" value="<?= (new DateTime('yesterday'))->format('Y-m-d') ?>">
+        <input type="date" name="dateTo" value="<?= (new DateTime('today'))->format('Y-m-d') ?>">
     </div>
     <div class="chart-container">
         <canvas id="tempChart"></canvas>
@@ -52,9 +47,9 @@
     let sensors = new Map(); // Map<ident_nummer, name>
     let selectedSensorId = null;
 
-    async function fetchData(hours) {
+    async function fetchDataByDate(dateFrom, dateTo) {
         try {
-            const url = `/temperaturlogger/api-ausgabe.php?hours=${hours}`;
+            const url = `/temperaturlogger/api-ausgabe.php?dateFrom=${dateFrom}&dateTo=${dateTo}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Netzwerkfehler');
             const data = await response.json();
@@ -167,18 +162,31 @@
     }
 
     // Event Listener
-    document.getElementById('hoursSelect').addEventListener('change', (e) => {
-        fetchData(e.target.value);
-    });
     document.getElementById('sensorSelect').addEventListener('change', (e) => {
         selectedSensorId = e.target.value;
         if (selectedSensorId && allData.length) {
             updateChart(selectedSensorId, allData);
         }
     });
+    const dateFrom = document.querySelector('input[name="dateFrom"]');
+    const dateTo = document.querySelector('input[name="dateTo"]');
+
+    dateFrom.addEventListener('change', updateDateRange);
+    dateTo.addEventListener('change', updateDateRange);
+
+    function updateDateRange() {
+        if (!dateFrom.value || !dateTo.value) {
+            return;
+        }
+
+        console.log('Von:', dateFrom.value);
+        console.log('Bis:', dateTo.value);
+
+        fetchDataByDate(dateFrom.value, dateTo.value);
+    }
 
     // Initialer Aufruf (Standard: 24 Stunden)
-    fetchData(24);
+    fetchDataByDate(dateFrom, dateTo);
 </script>
 </body>
 </html>
