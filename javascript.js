@@ -180,7 +180,7 @@ function updateChart(sensorId, data) {
                         unit,
 
                         displayFormats: {
-                            hour: 'HH:mm',
+                            hour: 'dd.MM HH:mm',
                             day: 'dd.MM',
                             week: 'dd.MM',
                             month: 'MM.yyyy'
@@ -192,9 +192,22 @@ function updateChart(sensorId, data) {
                     ticks: {
                         autoSkip: true,
                         maxTicksLimit: 10,
-                        maxRotation: 0
-                    },
+                        maxRotation: 0,
+                        callback: function(value) {
 
+                            const d = new Date(value);
+                            return [
+                                d.toLocaleDateString('de-DE', {
+                                    day: '2-digit',
+                                    month: '2-digit'
+                                }),
+                                d.toLocaleTimeString('de-DE', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })
+                            ];
+                        }
+                    },
                     title: {
                         display: true,
                         text: 'Zeit'
