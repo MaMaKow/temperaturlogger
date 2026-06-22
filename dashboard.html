@@ -39,26 +39,18 @@
             <option value="48">Letzte 48 Stunden</option>
             <option value="168">Letzte 7 Tage</option>
         </select>
-        <button id="refreshBtn">Aktualisieren</button>
     </div>
     <div class="chart-container">
         <canvas id="tempChart"></canvas>
     </div>
     <div class="last-update" id="lastUpdate"></div>
-    <div class="table-container">
-        <table id="dataTable">
-            <thead>
-                <tr><th>Zeit</th><th>Sensor</th><th>Temperatur (°C)</th><th>RSSI (dBm)</th><th>ID</th></tr>
-            </thead>
-            <tbody id="tableBody"><tr><td colspan="5">Daten werden geladen...</td></tr></tbody>
-        </table>
-    </div>
 </div>
 
 <script>
     let chartInstance = null;
     let allData = [];     // alle Rohdaten (für die Tabelle)
     let sensors = new Map(); // Map<ident_nummer, name>
+    let selectedSensorId = null;
 
     async function fetchData(hours) {
         try {
@@ -69,20 +61,28 @@
             allData = data;
             // Sensorenliste aktualisieren
             updateSensorList(data);
-            // Tabelle neu zeichnen (alle Daten, sortiert absteigend)
-            displayTable(data);
             // Diagramm aktualisieren (falls ein Sensor ausgewählt ist)
-            const selectedId = document.getElementById('sensorSelect').value;
-            if (selectedId) {
-                updateChart(selectedId, data);
+
+            const select = document.getElementById('sensorSelect');
+
+            if (!selectedSensorId && select.options.length > 1) {
+                selectedSensorId = select.options[1].value;
+                select.value = selectedSensorId;
+            }
+
+            if (selectedSensorId) {
+                select.value = selectedSensorId;
+                updateChart(selectedSensorId, data);
             } else {
-                if (chartInstance) chartInstance.destroy();
-                document.getElementById('tempChart').getContext('2d').clearRect(0,0,400,200);
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
             }
             document.getElementById('lastUpdate').innerText = 'Letzte Aktualisierung: ' + new Date().toLocaleString();
         } catch (error) {
             console.error('Fehler:', error);
-            document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">Fehler beim Laden</td></tr>';
+            document.getElementById('lastUpdate').innerText = 'Fehler beim Laden der Daten';
         }
     }
 
@@ -110,25 +110,6 @@
         select.onchange = oldListener;
     }
 
-    function displayTable(data) {
-        const tbody = document.getElementById('tableBody');
-        if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="5">Keine Daten im Zeitraum</td></tr>';
-            return;
-        }
-        // Sortieren: neueste zuerst
-        const sorted = [...data].sort((a,b) => new Date(b.zeit) - new Date(a.zeit));
-        const rows = sorted.map(row => `
-            <tr>
-                <td>${new Date(row.zeit).toLocaleString()}</td>
-                <td>${escapeHtml(row.name)} (${row.ident_nummer})</td>
-                <td>${parseFloat(row.wert).toFixed(2)} °C</td>
-                <td>${row.rssi_value} dBm</td>
-                <td>${row.id}</td>
-            </tr>
-        `).join('');
-        tbody.innerHTML = rows;
-    }
 
     function updateChart(sensorId, data) {
         // Daten für diesen Sensor filtern und nach Zeit aufsteigend sortieren
@@ -185,26 +166,14 @@
         });
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-
     // Event Listener
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-        const hours = document.getElementById('hoursSelect').value;
-        fetchData(hours);
+    document.getElementById('hoursSelect').addEventListener('change', (e) => {
+        fetchData(e.target.value);
     });
     document.getElementById('sensorSelect').addEventListener('change', (e) => {
-        if (e.target.value && allData.length) {
-            updateChart(e.target.value, allData);
-        } else {
-            if (chartInstance) chartInstance.destroy();
+        selectedSensorId = e.target.value;
+        if (selectedSensorId && allData.length) {
+            updateChart(selectedSensorId, allData);
         }
     });
 
